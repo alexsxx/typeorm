@@ -1274,9 +1274,6 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
             }
             throw error;
 
-        } finally {
-            if (queryRunner !== this.queryRunner) // means we created our own query runner
-                await queryRunner.release();
         }
     }
 
@@ -1702,14 +1699,14 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
                     throw new LockNotSupportedOnGivenDriverError();
                 }
             case "pessimistic_partial_write":
-                if (driver instanceof PostgresDriver) {
+                if (driver instanceof PostgresDriver || driver instanceof MysqlDriver) {
                     return " FOR UPDATE SKIP LOCKED";
 
                 } else {
                     throw new LockNotSupportedOnGivenDriverError();
                 }
             case "pessimistic_write_or_fail":
-                if (driver instanceof PostgresDriver) {
+                if (driver instanceof PostgresDriver || driver instanceof MysqlDriver) {
                     return " FOR UPDATE NOWAIT";
                 } else {
                     throw new LockNotSupportedOnGivenDriverError();
@@ -2020,9 +2017,11 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
         const selectString = Object.keys(orderBys)
             .map(orderCriteria => {
                 if (orderCriteria.indexOf(".") !== -1) {
-                    const [aliasName, propertyPath] = orderCriteria.split(".");
+                    const criteriaParts = orderCriteria.split(".");
+                    const aliasName = criteriaParts[0];
+                    const propertyPath = criteriaParts.slice(1).join(".");
                     const alias = this.expressionMap.findAliasByName(aliasName);
-                    const column = alias.metadata.findColumnWithPropertyName(propertyPath);
+                    const column = alias.metadata.findColumnWithPropertyPath(propertyPath);
                     return this.escape(parentAlias) + "." + this.escape(DriverUtils.buildColumnAlias(this.connection.driver, aliasName, column!.databaseName));
                 } else {
                     if (this.expressionMap.selects.find(select => select.selection === orderCriteria || select.aliasName === orderCriteria))
@@ -2036,9 +2035,11 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
         const orderByObject: OrderByCondition = {};
         Object.keys(orderBys).forEach(orderCriteria => {
             if (orderCriteria.indexOf(".") !== -1) {
-                const [aliasName, propertyPath] = orderCriteria.split(".");
+                const criteriaParts = orderCriteria.split(".");
+                const aliasName = criteriaParts[0];
+                const propertyPath = criteriaParts.slice(1).join(".");
                 const alias = this.expressionMap.findAliasByName(aliasName);
-                const column = alias.metadata.findColumnWithPropertyName(propertyPath);
+                const column = alias.metadata.findColumnWithPropertyPath(propertyPath);
                 orderByObject[this.escape(parentAlias) + "." + this.escape(DriverUtils.buildColumnAlias(this.connection.driver, aliasName, column!.databaseName))] = orderBys[orderCriteria];
             } else {
                 if (this.expressionMap.selects.find(select => select.selection === orderCriteria || select.aliasName === orderCriteria)) {

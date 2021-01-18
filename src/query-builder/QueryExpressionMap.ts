@@ -436,6 +436,7 @@ export class QueryExpressionMap {
         map.callListeners = this.callListeners;
         map.useTransaction = this.useTransaction;
         map.nativeParameters = Object.assign({}, this.nativeParameters);
+        map.comment = this.comment;
         return map;
     }
 
