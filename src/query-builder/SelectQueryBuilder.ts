@@ -1349,7 +1349,10 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
         this.expressionMap.joinAttributes.push(joinAttribute);
 
         if (joinAttribute.metadata) {
-
+           if (joinAttribute.metadata.deleteDateColumn && !this.expressionMap.withDeleted) {
+                const conditionDeleteColumn = `${aliasName}.${joinAttribute.metadata.deleteDateColumn.propertyName} IS NULL`;
+                joinAttribute.condition += joinAttribute.condition ? ` AND ${conditionDeleteColumn}`: `${conditionDeleteColumn}`;
+            }
             // todo: find and set metadata right there?
             joinAttribute.alias = this.expressionMap.createAlias({
                 type: "join",
@@ -1494,11 +1497,10 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
         //     .leftJoinAndSelect("category.post", "post");
 
         const joins = this.expressionMap.joinAttributes.map(joinAttr => {
-
             const relation = joinAttr.relation;
             const destinationTableName = joinAttr.tablePath;
             const destinationTableAlias = joinAttr.alias.name;
-            const appendedCondition = joinAttr.condition ? " AND (" + joinAttr.condition + ")" : "";
+            let appendedCondition = joinAttr.condition ? " AND (" + joinAttr.condition + ")" : "";
             const parentAlias = joinAttr.parentAlias;
 
             // if join was build without relation (e.g. without "post.category") then it means that we have direct
@@ -1524,6 +1526,10 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
 
                 // JOIN `post` `post` ON `post`.`categoryId` = `category`.`id`
                 const condition = relation.inverseRelation!.joinColumns.map(joinColumn => {
+                    if (relation.inverseEntityMetadata.tableType === "entity-child" && relation.inverseEntityMetadata.discriminatorColumn) {
+                        appendedCondition += " AND " + destinationTableAlias + "." + relation.inverseEntityMetadata.discriminatorColumn.databaseName + "='" + relation.inverseEntityMetadata.discriminatorValue + "'";
+                    }
+
                     return destinationTableAlias + "." + relation.inverseRelation!.propertyPath + "." + joinColumn.referencedColumn!.propertyPath + "=" +
                         parentAlias + "." + joinColumn.referencedColumn!.propertyPath;
                 }).join(" AND ");
@@ -1775,8 +1781,11 @@ export class SelectQueryBuilder<Entity> extends QueryBuilder<Entity> implements 
 
                 if (this.connection.driver instanceof PostgresDriver)
                     // cast to JSON to trigger parsing in the driver
-                    selectionPath = `ST_AsGeoJSON(${selectionPath})::json`;
-
+                    if (column.precision) {
+                        selectionPath = `ST_AsGeoJSON(${selectionPath}, ${column.precision})::json`;
+                    } else {
+                        selectionPath = `ST_AsGeoJSON(${selectionPath})::json`;
+                    }
                 if (this.connection.driver instanceof SqlServerDriver)
                     selectionPath = `${selectionPath}.ToString()`;
             }
