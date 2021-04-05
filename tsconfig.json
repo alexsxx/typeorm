@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "lib": ["es5", "es6"],
-        "outDir": "build/compiled",
+        "outDir": ".",
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "target": "es5",
@@ -22,11 +22,11 @@
         "downlevelIteration": true
     },
     "include": [
-      "sample",
       "src",
-      "test"
     ],
     "exclude": [
+        "test",
+        "sample",
         "tmp",
         "temp",
         "build",
