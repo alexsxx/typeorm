@@ -2,6 +2,7 @@
     "compilerOptions": {
         "lib": ["es5", "es6"],
         "outDir": ".",
+        "skipLibCheck": true,
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "target": "es5",
